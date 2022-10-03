@@ -1,20 +1,22 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
-using System.Collections.Concurrent;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using Leonardo;
 
-var parallelOptions = new ParallelOptions();
-parallelOptions.MaxDegreeOfParallelism = System.Environment.ProcessorCount;
-var results = new ConcurrentBag<int>();
-Parallel.ForEach(args, parallelOptions, (arg) =>
+var stopwatch = new Stopwatch();
+
+stopwatch.Start();
+await using var dataContext = new FibonacciDataContext();
+
+var listOfResults = await new Fibonacci(dataContext).RunAsync(args);
+
+foreach (var listOfResult in listOfResults)
 {
-    var result = Fibonacci.Run(Int32.Parse(arg));
-    results.Add(result);
-});
+    Console.WriteLine($"Result : {listOfResult}");
+}
+stopwatch.Stop();
 
-
-
+Console.WriteLine("time elapsed in seconds : " + stopwatch.Elapsed.Seconds);
 
 
