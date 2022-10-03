@@ -4,9 +4,17 @@ using System;
 using System.Diagnostics;
 using Leonardo;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");  
+
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+var services = new ServiceCollection();
+services.AddTransient<FibonacciDataContext>();services.AddTransient<Fibonacci>();
+services.AddLogging(configure => configure.AddConsole());
 
 IConfiguration configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
     .AddEnvironmentVariables().AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -15,25 +23,14 @@ IConfiguration configuration = new ConfigurationBuilder().SetBasePath(Directory.
 var applicationSection = configuration.GetSection("Application");
 var applicationConfig = applicationSection.Get<ApplicationConfig>();
 
-var loggerFactory = LoggerFactory.Create(builder =>
-{ 
-    builder.AddFilter("Microsoft", LogLevel.Warning).AddFilter("System", LogLevel.Warning).AddFilter("Demo", LogLevel.Debug).AddConsole();
-});
+using(var serviceProvider = services.BuildServiceProvider()) {
+    var logger = serviceProvider.GetService<ILogger<Program>>();   
+    logger.LogInformation($"Application Name : {applicationConfig.Name}");   
+    logger.LogInformation($"Application Message : {applicationConfig.Message}");   
+    var fibonacci = serviceProvider.GetService<Fibonacci>();   
+    var results = await fibonacci.RunAsync(args);
+}
 
-var applicationName = configuration.GetValue<string>("Application:Name");    
-var applicationMessage = configuration.GetValue<string>("Application:Message");
-
-var logger = loggerFactory.CreateLogger("Demo.Program");
-
-logger.LogInformation($"Application Name : {applicationConfig.Name}");
-logger.LogInformation($"Application Message : {applicationConfig.Message}");
-
-Console.WriteLine($"Application Name : {applicationName}");    
-Console.WriteLine($"Application Message : {applicationMessage}");
-
-var stopwatch = new Stopwatch();
-
-stopwatch.Start();
 await using var dataContext = new FibonacciDataContext();
 
 var listOfResults = await new Fibonacci(dataContext).RunAsync(args);
