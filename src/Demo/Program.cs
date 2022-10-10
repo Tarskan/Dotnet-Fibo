@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using System;
 using System.Diagnostics;
 using Leonardo;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,7 +13,7 @@ var stopwatch = new Stopwatch();
 stopwatch.Start();
 
 var services = new ServiceCollection();
-services.AddTransient<FibonacciDataContext>();services.AddTransient<Fibonacci>();
+services.AddTransient<Fibonacci>();
 services.AddLogging(configure => configure.AddConsole());
 
 IConfiguration configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
@@ -22,6 +22,8 @@ IConfiguration configuration = new ConfigurationBuilder().SetBasePath(Directory.
 
 var applicationSection = configuration.GetSection("Application");
 var applicationConfig = applicationSection.Get<ApplicationConfig>();
+services.AddDbContext<FibonacciDataContext>(options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
 
 using(var serviceProvider = services.BuildServiceProvider()) {
     var logger = serviceProvider.GetService<ILogger<Program>>();   
@@ -29,16 +31,12 @@ using(var serviceProvider = services.BuildServiceProvider()) {
     logger.LogInformation($"Application Message : {applicationConfig.Message}");   
     var fibonacci = serviceProvider.GetService<Fibonacci>();   
     var results = await fibonacci.RunAsync(args);
+    foreach (var listOfResult in results)
+    {
+        Console.WriteLine($"Result : {listOfResult}");
+    }
 }
 
-await using var dataContext = new FibonacciDataContext();
-
-var listOfResults = await new Fibonacci(dataContext).RunAsync(args);
-
-foreach (var listOfResult in listOfResults)
-{
-    Console.WriteLine($"Result : {listOfResult}");
-}
 stopwatch.Stop();
 
 Console.WriteLine("time elapsed in seconds : " + stopwatch.Elapsed.Seconds);
